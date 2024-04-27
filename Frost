@@ -1,0 +1,556 @@
+repeat
+    task.wait()
+until game:IsLoaded()
+
+local library
+do
+    local folder = "CannonCFG"
+    local services = setmetatable({}, {
+        __index = function(_, service)
+            if service == "InputService" then
+                return game:GetService("UserInputService")
+            end
+
+            return game:GetService(service)
+        end
+    })
+
+    local utility = {}
+
+    function utility.randomstring(length)
+        local str = ""
+        local chars = string.split("abcdefghijklmnopqrstuvwxyz1234567890", "")
+
+        for i = 1, length do
+            local i = math.random(1, #chars)
+
+            if not tonumber(chars[i]) then
+                local uppercase = math.random(1, 2) == 2 and true or false
+                str = str .. (uppercase and chars[i]:upper() or chars[i])
+            else
+                str = str .. chars[i]
+            end
+        end
+
+        return str
+    end
+
+    function utility.create(class, properties)
+        local obj = Instance.new(class)
+
+        local forced = {
+            AutoButtonColor = false
+        }
+
+        for prop, v in next, properties do
+            obj[prop] = v
+        end
+
+        for prop, v in next, forced do
+            pcall(function()
+                obj[prop] = v
+            end)
+        end
+
+        obj.Name = utility.randomstring(16)
+
+        return obj
+    end
+
+    function utility.dragify(object, speed)
+        local start, objectPosition, dragging
+        speed = speed or 0
+        object.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                start = input.Position
+                objectPosition = object.Position
+            end
+        end)
+
+        object.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = false
+            end
+        end)
+
+        services.InputService.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch and dragging then
+                utility.tween(object, { speed }, { Position = UDim2.new(objectPosition.X.Scale, objectPosition.X.Offset + (input.Position - start).X, objectPosition.Y.Scale, objectPosition.Y.Offset + (input.Position - start).Y) })
+            end
+        end)
+    end
+
+    function utility.getrgb(color)
+        local r = math.floor(color.r * 255)
+        local g = math.floor(color.g * 255)
+        local b = math.floor(color.b * 255)
+
+        return r, g, b
+    end
+
+    function utility.getcenter(sizeX, sizeY)
+        return UDim2.new(0.5, -(sizeX / 2), 0.5, -(sizeY / 2))
+    end
+
+    function utility.table(tbl)
+        tbl = tbl or {}
+
+        local newtbl = {}
+
+        for i, v in next, tbl do
+            if type(i) == "string" then
+                newtbl[i:lower()] = v
+            end
+        end
+
+        return setmetatable({}, {
+            __newindex = function(_, k, v)
+                rawset(newtbl, k:lower(), v)
+            end,
+
+            __index = function(_, k)
+                return newtbl[k:lower()]
+            end
+        })
+    end
+
+    function utility.tween(obj, info, properties, callback)
+        local anim = services.TweenService:Create(obj, TweenInfo.new(unpack(info)), properties)
+        anim:Play()
+
+        if callback then
+            anim.Completed:Connect(callback)
+        end
+
+        return anim
+    end
+
+    function utility.makevisible(obj, bool)
+        if bool == false then
+            local tween
+
+            if not obj.ClassName:find("UI") then
+                if obj.ClassName:find("Text") then
+                    tween = utility.tween(obj, { 0.2 }, { BackgroundTransparency = obj.BackgroundTransparency + 1, TextTransparency = obj.TextTransparency + 1, TextStrokeTransparency = obj.TextStrokeTransparency + 1 })
+                elseif obj.ClassName:find("Image") then
+                    tween = utility.tween(obj, { 0.2 }, { BackgroundTransparency = obj.BackgroundTransparency + 1, ImageTransparency = obj.ImageTransparency + 1 })
+                elseif obj.ClassName:find("Scrolling") then
+                    tween = utility.tween(obj, { 0.2 }, { BackgroundTransparency = obj.BackgroundTransparency + 1, ScrollBarImageTransparency = obj.ScrollBarImageTransparency + 1 })
+                else
+                    tween = utility.tween(obj, { 0.2 }, { BackgroundTransparency = obj.BackgroundTransparency + 1 })
+                end
+            end
+
+            tween.Completed:Connect(function()
+                obj.Visible = false
+            end)
+
+            for _, descendant in next, obj:GetDescendants() do
+                if not descendant.ClassName:find("UI") then
+                    if descendant.ClassName:find("Text") then
+                        utility.tween(descendant, { 0.2 }, { BackgroundTransparency = descendant.BackgroundTransparency + 1, TextTransparency = descendant.TextTransparency + 1, TextStrokeTransparency = descendant.TextStrokeTransparency + 1 })
+                    elseif descendant.ClassName:find("Image") then
+                        utility.tween(descendant, { 0.2 }, { BackgroundTransparency = descendant.BackgroundTransparency + 1, ImageTransparency = descendant.ImageTransparency + 1 })
+                    elseif descendant.ClassName:find("Scrolling") then
+                        utility.tween(descendant, { 0.2 }, { BackgroundTransparency = descendant.BackgroundTransparency + 1, ScrollBarImageTransparency = descendant.ScrollBarImageTransparency + 1 })
+                    else
+                        utility.tween(descendant, { 0.2 }, { BackgroundTransparency = descendant.BackgroundTransparency + 1 })
+                    end
+                end
+            end
+
+            return tween
+        elseif bool == true then
+            local tween
+
+            if not obj.ClassName:find("UI") then
+                obj.Visible = true
+
+                if obj.ClassName:find("Text") then
+                    tween = utility.tween(obj, { 0.2 }, { BackgroundTransparency = obj.BackgroundTransparency - 1, TextTransparency = obj.TextTransparency - 1, TextStrokeTransparency = obj.TextStrokeTransparency - 1 })
+                elseif obj.ClassName:find("Image") then
+                    tween = utility.tween(obj, { 0.2 }, { BackgroundTransparency = obj.BackgroundTransparency - 1, ImageTransparency = obj.ImageTransparency - 1 })
+                elseif obj.ClassName:find("Scrolling") then
+                    tween = utility.tween(obj, { 0.2 }, { BackgroundTransparency = obj.BackgroundTransparency - 1, ScrollBarImageTransparency = obj.ScrollBarImageTransparency - 1 })
+                else
+                    tween = utility.tween(obj, { 0.2 }, { BackgroundTransparency = obj.BackgroundTransparency - 1 })
+                end
+            end
+
+            for _, descendant in next, obj:GetDescendants() do
+                if not descendant.ClassName:find("UI") then
+                    if descendant.ClassName:find("Text") then
+                        utility.tween(descendant, { 0.2 }, { BackgroundTransparency = descendant.BackgroundTransparency - 1, TextTransparency = descendant.TextTransparency - 1, TextStrokeTransparency = descendant.TextStrokeTransparency - 1 })
+                    elseif descendant.ClassName:find("Image") then
+                        utility.tween(descendant, { 0.2 }, { BackgroundTransparency = descendant.BackgroundTransparency - 1, ImageTransparency = descendant.ImageTransparency - 1 })
+                    elseif descendant.ClassName:find("Scrolling") then
+                        utility.tween(descendant, { 0.2 }, { BackgroundTransparency = descendant.BackgroundTransparency - 1, ScrollBarImageTransparency = descendant.ScrollBarImageTransparency - 1 })
+                    else
+                        utility.tween(descendant, { 0.2 }, { BackgroundTransparency = descendant.BackgroundTransparency - 1 })
+                    end
+                end
+            end
+
+            return tween
+        end
+    end
+
+    function utility.updatescrolling(scrolling, list)
+        return list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            scrolling.CanvasSize = UDim2.new(0, 0, 0, list.AbsoluteContentSize.Y)
+        end)
+    end
+
+    function utility.changecolor(color, amount)
+        local r, g, b = utility.getrgb(color)
+        r = math.clamp(r + amount, 0, 255)
+        g = math.clamp(g + amount, 0, 255)
+        b = math.clamp(b + amount, 0, 255)
+
+        return Color3.fromRGB(r, g, b)
+    end
+
+    function utility.gradient(colors)
+        local colortbl = {}
+
+        for i, color in next, colors do
+            table.insert(colortbl, ColorSequenceKeypoint.new((i - 1) / (#colors - 1), color))
+        end
+
+        return ColorSequence.new(colortbl)
+    end
+
+    library = utility.table {
+        flags = {},
+        toggled = true,
+        accent = Color3.fromRGB(0,0,139),
+        outline = { Color3.fromRGB(121, 66, 254), Color3.fromRGB(128,0,128) },
+        keybind = Enum.KeyCode.RightShift
+    }
+
+    local accentobjects = { gradient = {}, bg = {}, text = {} }
+
+    function library:ChangeAccent(accent)
+        library.accent = accent
+
+        for obj, color in next, accentobjects.gradient do
+            obj.Color = color(accent)
+        end
+
+        for _, obj in next, accentobjects.bg do
+            obj.BackgroundColor3 = accent
+        end
+
+        for _, obj in next, accentobjects.text do
+            obj.TextColor3 = accent
+        end
+    end
+
+    local outlineobjs = {}
+
+    function library:ChangeOutline(colors)
+        for _, obj in next, outlineobjs do
+            obj.Color = utility.gradient(colors)
+        end
+    end
+
+    local gui = utility.create("ScreenGui", {})
+
+    local flags = {}
+
+    function library:SaveConfig(name, universal)
+        local configtbl = {}
+        local placeid = universal and "universal" or game.PlaceId
+
+        for flag, _ in next, flags do
+            local value = library.flags[flag]
+            if typeof(value) == "EnumItem" then
+                configtbl[flag] = tostring(value)
+            elseif typeof(value) == "Color3" then
+                configtbl[flag] = { math.floor(value.R * 255), math.floor(value.G * 255), math.floor(value.B * 255) }
+            else
+                configtbl[flag] = value
+            end
+        end
+
+        local config = services.HttpService:JSONEncode(configtbl)
+        local folderpath = string.format("%s//%s", folder, placeid)
+
+        if not isfolder(folderpath) then
+            makefolder(folderpath)
+        end
+
+        local filepath = string.format("%s//%s.json", folderpath, name)
+        writefile(filepath, config)
+    end
+
+    function library:DeleteConfig(name, universal)
+        local placeid = universal and "universal" or game.PlaceId
+
+        local folderpath = string.format("%s//%s", folder, placeid)
+
+        if isfolder(folderpath) then
+            local folderpath = string.format("%s//%s", folder, placeid)
+            local filepath = string.format("%s//%s.json", folderpath, name)
+
+            delfile(filepath)
+        end
+    end
+
+    function library:LoadConfig(name)
+        local placeidfolder = string.format("%s//%s", folder, game.PlaceId)
+        local placeidfile = string.format("%s//%s.json", placeidfolder, name)
+
+        local filepath
+        do
+            if isfolder(placeidfolder) and isfile(placeidfile) then
+                filepath = placeidfile
+            else
+                filepath = string.format("%s//universal//%s.json", folder, name)
+            end
+        end
+
+        local file = readfile(filepath)
+        local config = services.HttpService:JSONDecode(file)
+
+        for flag, v in next, config do
+            local func = flags[flag]
+            func(v)
+        end
+    end
+
+    function library:ListConfigs(universal)
+        local configs = {}
+        local placeidfolder = string.format("%s//%s", folder, game.PlaceId)
+        local universalfolder = folder .. "//universal"
+
+        for _, config in next, (isfolder(placeidfolder) and listfiles(placeidfolder) or {}) do
+            local name = config:gsub(placeidfolder .. "\\", ""):gsub(".json", "")
+            table.insert(configs, name)
+        end
+
+        if universal and isfolder(universalfolder) then
+            for _, config in next, (isfolder(placeidfolder) and listfiles(placeidfolder) or {}) do
+                configs[config:gsub(universalfolder .. "\\", "")] = readfile(config)
+            end
+        end
+        return configs
+    end
+
+    function library:Watermark(options)
+        local text = table.concat(options, " <font color=\"#D2D2D2\">|</font> ")
+
+        local watermarksize = services.TextService:GetTextSize(text:gsub("<font color=\"#D2D2D2\">", ""):gsub("</font>", ""), 14, Enum.Font.Code, Vector2.new(1000, 1000)).X + 16
+
+        local watermark = utility.create("TextLabel", {
+            ZIndex = 2,
+            Size = UDim2.new(0, watermarksize, 0, 20),
+            BorderColor3 = Color3.fromRGB(50, 50, 50),
+            Position = UDim2.new(0, 10, 0, 10),
+            BorderSizePixel = 0,
+            BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+            FontSize = Enum.FontSize.Size14,
+            TextStrokeTransparency = 0,
+            TextSize = 14,
+            RichText = true,
+            TextColor3 = library.accent,
+            Text = text,
+            Font = Enum.Font.Code,
+            Parent = gui
+        })
+
+        table.insert(accentobjects.text, watermark)
+
+        utility.create("UIPadding", {
+            PaddingBottom = UDim.new(0, 2),
+            Parent = watermark
+        })
+
+        local outline = utility.create("Frame", {
+            Size = UDim2.new(1, 2, 1, 4),
+            BorderColor3 = Color3.fromRGB(45, 45, 45),
+            Position = UDim2.new(0, -1, 0, -1),
+            BorderSizePixel = 0,
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+            Parent = watermark
+        })
+
+        utility.create("Frame", {
+            ZIndex = 0,
+            Size = UDim2.new(1, 2, 1, 2),
+            Position = UDim2.new(0, -1, 0, -1),
+            BorderSizePixel = 0,
+            BackgroundColor3 = Color3.fromRGB(45, 45, 45),
+            Parent = outline
+        })
+
+        local outlinegradient = utility.create("UIGradient", {
+            Rotation = 45,
+            Color = utility.gradient(library.outline),
+            Parent = outline
+        })
+
+        table.insert(outlineobjs, outlinegradient)
+
+        local watermarktypes = utility.table()
+
+        function watermarktypes:Update(options)
+            local text = table.concat(options, " <font color=\"#D2D2D2\">|</font> ")
+            local watermarksize = services.TextService:GetTextSize(text:gsub("<font color=\"#D2D2D2\">", ""):gsub("</font>", ""), 14, Enum.Font.Code, Vector2.new(1000, 1000)).X + 16
+
+            watermark.Size = UDim2.new(0, watermarksize, 0, 20)
+            watermark.Text = text
+        end
+
+        local toggling = false
+        local toggled = true
+
+        function watermarktypes:Toggle()
+            if not toggling then
+                toggling = true
+
+                toggled = not toggled
+                local tween = utility.makevisible(watermark, toggled)
+                tween.Completed:Wait()
+
+                toggling = false
+            end
+        end
+
+        return watermarktypes
+    end
+
+    function library:New(options)
+        options = utility.table(options)
+        local name = options.name
+        local accent = options.accent or library.accent
+        local outlinecolor = options.outline or { accent, utility.changecolor(accent, -100) }
+        local sizeX = options.sizeX or 550
+        local sizeY = options.sizeY or 350
+
+        library.accent = accent
+        library.outline = outlinecolor
+
+        local holder = utility.create("Frame", {
+            Size = UDim2.new(0, sizeX, 0, 24),
+            BackgroundTransparency = 1,
+            Position = utility.getcenter(sizeX, sizeY),
+            Parent = gui
+        })
+
+        local toggling = false
+        function library:Toggle()
+            if not toggling then
+                toggling = true
+
+                library.toggled = not library.toggled
+                local tween = utility.makevisible(holder, library.toggled)
+                tween.Completed:Wait()
+
+                toggling = false
+            end
+        end
+
+        utility.dragify(holder)
+
+        local title = utility.create("TextLabel", {
+            ZIndex = 5,
+            Size = UDim2.new(0, 0, 1, -2),
+            BorderColor3 = Color3.fromRGB(50, 50, 50),
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 12, 0, 0),
+            BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+            FontSize = Enum.FontSize.Size14,
+            TextStrokeTransparency = 0,
+            TextSize = 14,
+            TextColor3 = library.accent,
+            Text = name,
+            Font = Enum.Font.Code,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = holder
+        })
+
+        table.insert(accentobjects.text, title)
+
+        local main = utility.create("Frame", {
+            ZIndex = 2,
+            Size = UDim2.new(1, 0, 0, sizeY),
+            BorderColor3 = Color3.fromRGB(27, 42, 53),
+            BorderSizePixel = 0,
+            BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+            Parent = holder
+        })
+
+        local outline = utility.create("Frame", {
+            Size = UDim2.new(1, 2, 1, 2),
+            BorderColor3 = Color3.fromRGB(45, 45, 45),
+            Position = UDim2.new(0, -1, 0, -1),
+            BorderSizePixel = 0,
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+            Parent = main
+        })
+
+        local outlinegradient = utility.create("UIGradient", {
+            Rotation = 45,
+            Color = utility.gradient(library.outline),
+            Parent = outline
+        })
+
+        table.insert(outlineobjs, outlinegradient)
+
+        local border = utility.create("Frame", {
+            ZIndex = 0,
+            Size = UDim2.new(1, 2, 1, 2),
+            Position = UDim2.new(0, -1, 0, -1),
+            BorderSizePixel = 0,
+            BackgroundColor3 = Color3.fromRGB(45, 45, 45),
+            Parent = outline
+        })
+
+        local tabs = utility.create("Frame", {
+            ZIndex = 4,
+            Size = UDim2.new(1, -16, 1, -30),
+            BorderColor3 = Color3.fromRGB(50, 50, 50),
+            Position = UDim2.new(0, 8, 0, 22),
+            BorderSizePixel = 0,
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+            Parent = main
+        })
+
+        utility.create("UIGradient", {
+            Rotation = 90,
+            Color = ColorSequence.new(Color3.fromRGB(25, 25, 25), Color3.fromRGB(20, 20, 20)),
+            Parent = tabs
+        })
+
+        utility.create("Frame", {
+            ZIndex = 3,
+            Size = UDim2.new(1, 2, 1, 2),
+            Position = UDim2.new(0, -1, 0, -1),
+            BorderSizePixel = 0,
+            BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+            Parent = tabs
+        })
+
+        local tabtoggles = utility.create("Frame", {
+            Size = UDim2.new(0, 395, 0, 22),
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 6, 0, 6),
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+            Parent = tabs
+        })
+
+        utility.create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDim.new(0, 4),
+            Parent = tabtoggles
+        })
+
+        local tabframes = utility.create("Frame", {
+            ZIndex = 5,
+            Size = UDim2.new(1, -12, 1, -35),
+            BorderColor3 = Color3.fromRGB(50, 50, 50),
+            Position = UDim2.new(0, 6, 0, 29),
+            BackgroundCol
